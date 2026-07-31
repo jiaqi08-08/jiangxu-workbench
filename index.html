@@ -644,9 +644,12 @@ body{
       <div class="fin-goal-card">
         <h3>🎯 存钱目标</h3>
         <div class="fin-goal-inputs">
-          <input type="number" id="finGoalAmount" placeholder="目标金额 ¥" value="10000" oninput="localStorage.setItem('jx_fin_goal',JSON.stringify({amount:parseFloat(this.value)||0,date:document.getElementById('finGoalDate').value}));">
-          <input type="date" id="finGoalDate" value="2026-12-31" onchange="localStorage.setItem('jx_fin_goal',JSON.stringify({amount:parseFloat(document.getElementById('finGoalAmount').value)||0,date:this.value}));">
-          <button class="savings-calc-btn" onclick="calcFinGoal()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--pink);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">AI分析</button>
+          <input type="number" id="finGoalAmount" placeholder="目标金额 ¥" value="10000" oninput="updateFinGoalLive()">
+          <input type="date" id="finGoalDate" value="2026-12-31" onchange="updateFinGoalLive()">
+        </div>
+        <div class="fin-goal-inputs" style="margin-top:8px;">
+          <input type="number" id="finGoalSaved" placeholder="已存金额 ¥" value="0" oninput="updateFinGoalLive()">
+          <button class="savings-calc-btn" onclick="saveFinGoal()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--pink);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">保存并AI分析</button>
         </div>
         <div id="finGoalResult"></div>
       </div>
@@ -1629,11 +1632,24 @@ function getFinCatLabel(val){
 }
 
 function calcFinGoal(){
+  saveFinGoal();
+}
+
+function saveFinGoal(){
   var goal=parseFloat(document.getElementById('finGoalAmount').value);
   var dateStr=document.getElementById('finGoalDate').value;
+  var saved=parseFloat(document.getElementById('finGoalSaved').value)||0;
   if(!goal||goal<=0){alert('请输入有效目标金额');return;}
   if(!dateStr){alert('请选择截止日期');return;}
-  localStorage.setItem('jx_fin_goal',JSON.stringify({amount:goal,date:dateStr}));
+  localStorage.setItem('jx_fin_goal',JSON.stringify({amount:goal,date:dateStr,saved:saved}));
+  renderFinGoal();
+}
+
+function updateFinGoalLive(){
+  var goal=parseFloat(document.getElementById('finGoalAmount').value)||0;
+  var dateStr=document.getElementById('finGoalDate').value||'2026-12-31';
+  var saved=parseFloat(document.getElementById('finGoalSaved').value)||0;
+  localStorage.setItem('jx_fin_goal',JSON.stringify({amount:goal,date:dateStr,saved:saved}));
   renderFinGoal();
 }
 
@@ -1642,19 +1658,29 @@ function renderFinGoal(){
   try{savedGoal=JSON.parse(localStorage.getItem('jx_fin_goal')||'{}');}catch(e){}
   var goalInput=document.getElementById('finGoalAmount');
   var dateInput=document.getElementById('finGoalDate');
+  var savedInput=document.getElementById('finGoalSaved');
   if(savedGoal.amount){goalInput.value=savedGoal.amount;}
   if(savedGoal.date){dateInput.value=savedGoal.date;}
-  var goal=parseFloat(goalInput.value)||10000;
-  var dateStr=dateInput.value||'2026-12-31';
   
   var records=loadFinRecords();
+  var totalIncome=records.filter(function(r){return r.type==='income';}).reduce(function(s,r){return s+r.amount;},0);
+  var totalExpense=records.filter(function(r){return r.type==='expense';}).reduce(function(s,r){return s+r.amount;},0);
+  var autoSaved=totalIncome-totalExpense;
+  
+  if(savedGoal.saved!==undefined){
+    savedInput.value=savedGoal.saved;
+  }else{
+    savedInput.value=autoSaved>0?autoSaved:0;
+  }
+  
+  var goal=parseFloat(goalInput.value)||10000;
+  var dateStr=dateInput.value||'2026-12-31';
+  var saved=parseFloat(savedInput.value)||0;
+  
   var now=new Date();now.setHours(0,0,0,0);
   var target=new Date(dateStr);target.setHours(0,0,0,0);
   var days=Math.max(1,Math.ceil((target-now)/86400000));
   
-  var totalIncome=records.filter(function(r){return r.type==='income';}).reduce(function(s,r){return s+r.amount;},0);
-  var totalExpense=records.filter(function(r){return r.type==='expense';}).reduce(function(s,r){return s+r.amount;},0);
-  var saved=totalIncome-totalExpense;
   var remaining=Math.max(0,goal-saved);
   var percent=goal>0?Math.min(100,Math.round(saved/goal*100)):0;
   var dailyBudget=Math.round(remaining/days);
