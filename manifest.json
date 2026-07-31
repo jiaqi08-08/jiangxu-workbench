@@ -1,23 +1,24 @@
 {
   "name": "江序工作台",
-  "short_name": "江序工作台",
-  "description": "知识干货创作系统 - 每日计划/选题灵感/爆款二创/内容复盘",
-  "start_url": "./index.html",
+  "short_name": "江序",
+  "description": "江序个人工作台 - 每日计划/妆容穿搭/播客精选/新闻资讯/日历/记账/经期记录",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#fef0f5",
+  "background_color": "#fce4ec",
   "theme_color": "#ec407a",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%23ec407a'/%3E%3Ctext x='96' y='130' font-size='100' font-weight='bold' fill='white' text-anchor='middle' font-family='sans-serif'%3E江%3C/text%3E%3C/svg%3E",
+      "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23ec407a'/%3E%3Ctext x='256' y='350' font-size='280' font-weight='bold' fill='white' text-anchor='middle' font-family='sans-serif'%3E江%3C/text%3E%3C/svg%3E",
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
