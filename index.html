@@ -638,7 +638,7 @@ body{
         </div>
       </div>
       <div class="fin-record-list">
-        <h3>📋 本月记录</h3>
+        <h3>📋 全部记录</h3>
         <div id="finRecordList"></div>
       </div>
       <div class="fin-goal-card">
@@ -1567,14 +1567,15 @@ function addFinRecord(){
   var amount=parseFloat(document.getElementById('finAmount').value);
   if(!amount||amount<=0){alert('请输入有效金额');return;}
   var records=loadFinRecords();
-  records.unshift({
+  var newRecord={
     id:'f'+Date.now(),
     type:currentFinType,
-    amount:amount,
+    amount:Math.round(amount*100)/100,
     category:document.getElementById('finCategory').value,
     note:document.getElementById('finNote').value,
     date:document.getElementById('finDate').value||todayStr()
-  });
+  };
+  records.unshift(newRecord);
   saveFinRecords(records);
   document.getElementById('finAmount').value='';
   document.getElementById('finNote').value='';
@@ -1604,17 +1605,22 @@ function renderFinance(){
   document.getElementById('finExpense').textContent='¥'+expense.toFixed(2);
   document.getElementById('finBalance').textContent='¥'+balance.toFixed(2);
   
-  if(monthRecords.length===0){
-    document.getElementById('finRecordList').innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:16px;">本月暂无记录</div>';
+  var allRecords=records.slice().sort(function(a,b){
+    return (b.date||'').localeCompare(a.date||'');
+  });
+  
+  if(allRecords.length===0){
+    document.getElementById('finRecordList').innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:16px;">暂无记录，点击上方「记一笔」开始</div>';
   }else{
-    document.getElementById('finRecordList').innerHTML=monthRecords.map(function(r){
+    document.getElementById('finRecordList').innerHTML=allRecords.map(function(r){
       var icon=FIN_CAT_ICONS[r.category]||'📦';
-      var dateShort=r.date?r.date.substring(5):'';
+      var dateFull=r.date||'';
+      var typeLabel=r.type==='income'?'<span style="color:var(--green);font-size:10px;">收入</span>':'<span style="color:var(--red);font-size:10px;">支出</span>';
       return '<div class="fin-record">'
       +'<div class="fin-record-icon '+r.type+'">'+icon+'</div>'
       +'<div class="fin-record-body">'
       +'<div class="fin-record-cat">'+getFinCatLabel(r.category)+(r.note?' · '+esc(r.note):'')+'</div>'
-      +'<div class="fin-record-note">'+dateShort+'</div>'
+      +'<div class="fin-record-note">'+dateFull+' '+typeLabel+'</div>'
       +'</div>'
       +'<div class="fin-record-amount '+r.type+'">'+(r.type==='income'?'+':'-')+'¥'+r.amount+'</div>'
       +'<span class="fin-record-del" onclick="delFinRecord(\''+r.id+'\')">✕</span>'
