@@ -638,14 +638,14 @@ body{
         </div>
       </div>
       <div class="fin-record-list">
-        <h3>📋 今日记录</h3>
+        <h3>📋 本月记录</h3>
         <div id="finRecordList"></div>
       </div>
       <div class="fin-goal-card">
         <h3>🎯 存钱目标</h3>
         <div class="fin-goal-inputs">
-          <input type="number" id="finGoalAmount" placeholder="目标金额 ¥" value="10000">
-          <input type="date" id="finGoalDate" value="2026-12-31">
+          <input type="number" id="finGoalAmount" placeholder="目标金额 ¥" value="10000" oninput="localStorage.setItem('jx_fin_goal',JSON.stringify({amount:parseFloat(this.value)||0,date:document.getElementById('finGoalDate').value}));">
+          <input type="date" id="finGoalDate" value="2026-12-31" onchange="localStorage.setItem('jx_fin_goal',JSON.stringify({amount:parseFloat(document.getElementById('finGoalAmount').value)||0,date:this.value}));">
           <button class="savings-calc-btn" onclick="calcFinGoal()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--pink);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">AI分析</button>
         </div>
         <div id="finGoalResult"></div>
@@ -1580,7 +1580,6 @@ function addFinRecord(){
 }
 
 function delFinRecord(id){
-  if(!confirm('删除这条记录？'))return;
   var records=loadFinRecords().filter(function(r){return r.id!==id;});
   saveFinRecords(records);
   renderFinance();
@@ -1591,26 +1590,28 @@ function renderFinance(){
   var now=new Date();
   var ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   
-  var monthRecords=records.filter(function(r){return r.date.indexOf(ym)===0;});
+  var monthRecords=records.filter(function(r){
+    return r.date&&r.date.indexOf(ym)===0;
+  });
   var income=monthRecords.filter(function(r){return r.type==='income';}).reduce(function(s,r){return s+r.amount;},0);
   var expense=monthRecords.filter(function(r){return r.type==='expense';}).reduce(function(s,r){return s+r.amount;},0);
   var balance=income-expense;
   
-  document.getElementById('finIncome').textContent='¥'+income.toLocaleString();
-  document.getElementById('finExpense').textContent='¥'+expense.toLocaleString();
-  document.getElementById('finBalance').textContent='¥'+balance.toLocaleString();
+  document.getElementById('finIncome').textContent='¥'+income.toFixed(2);
+  document.getElementById('finExpense').textContent='¥'+expense.toFixed(2);
+  document.getElementById('finBalance').textContent='¥'+balance.toFixed(2);
   
-  var todayRecords=records.filter(function(r){return r.date===todayStr();});
-  if(todayRecords.length===0){
-    document.getElementById('finRecordList').innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:16px;">今日暂无记录</div>';
+  if(monthRecords.length===0){
+    document.getElementById('finRecordList').innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:16px;">本月暂无记录</div>';
   }else{
-    document.getElementById('finRecordList').innerHTML=todayRecords.map(function(r){
+    document.getElementById('finRecordList').innerHTML=monthRecords.map(function(r){
       var icon=FIN_CAT_ICONS[r.category]||'📦';
+      var dateShort=r.date?r.date.substring(5):'';
       return '<div class="fin-record">'
       +'<div class="fin-record-icon '+r.type+'">'+icon+'</div>'
       +'<div class="fin-record-body">'
-      +'<div class="fin-record-cat">'+getFinCatLabel(r.category)+'</div>'
-      +(r.note?'<div class="fin-record-note">'+esc(r.note)+'</div>':'')
+      +'<div class="fin-record-cat">'+getFinCatLabel(r.category)+(r.note?' · '+esc(r.note):'')+'</div>'
+      +'<div class="fin-record-note">'+dateShort+'</div>'
       +'</div>'
       +'<div class="fin-record-amount '+r.type+'">'+(r.type==='income'?'+':'-')+'¥'+r.amount+'</div>'
       +'<span class="fin-record-del" onclick="delFinRecord(\''+r.id+'\')">✕</span>'
@@ -1632,12 +1633,19 @@ function calcFinGoal(){
   var dateStr=document.getElementById('finGoalDate').value;
   if(!goal||goal<=0){alert('请输入有效目标金额');return;}
   if(!dateStr){alert('请选择截止日期');return;}
+  localStorage.setItem('jx_fin_goal',JSON.stringify({amount:goal,date:dateStr}));
   renderFinGoal();
 }
 
 function renderFinGoal(){
-  var goal=parseFloat(document.getElementById('finGoalAmount').value)||10000;
-  var dateStr=document.getElementById('finGoalDate').value||'2026-12-31';
+  var savedGoal={};
+  try{savedGoal=JSON.parse(localStorage.getItem('jx_fin_goal')||'{}');}catch(e){}
+  var goalInput=document.getElementById('finGoalAmount');
+  var dateInput=document.getElementById('finGoalDate');
+  if(savedGoal.amount){goalInput.value=savedGoal.amount;}
+  if(savedGoal.date){dateInput.value=savedGoal.date;}
+  var goal=parseFloat(goalInput.value)||10000;
+  var dateStr=dateInput.value||'2026-12-31';
   
   var records=loadFinRecords();
   var now=new Date();now.setHours(0,0,0,0);
@@ -1654,7 +1662,7 @@ function renderFinGoal(){
   var monthlyExpense=0;
   var now2=new Date();
   var ym=now2.getFullYear()+'-'+String(now2.getMonth()+1).padStart(2,'0');
-  records.filter(function(r){return r.type==='expense'&&r.date.indexOf(ym)===0;}).forEach(function(r){monthlyExpense+=r.amount;});
+  records.filter(function(r){return r.type==='expense'&&r.date&&r.date.indexOf(ym)===0;}).forEach(function(r){monthlyExpense+=r.amount;});
   var dailyAvgExpense=Math.round(monthlyExpense/Math.max(1,new Date().getDate()));
   
   var advice='';
