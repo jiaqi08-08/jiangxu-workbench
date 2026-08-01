@@ -644,13 +644,14 @@ body{
       <div class="fin-goal-card">
         <h3>🎯 存钱目标</h3>
         <div class="fin-goal-inputs">
-          <input type="number" id="finGoalAmount" placeholder="目标金额 ¥" value="10000" oninput="updateFinGoalLive()">
-          <input type="date" id="finGoalDate" value="2026-12-31" onchange="updateFinGoalLive()">
+          <input type="number" id="finGoalAmount" placeholder="目标金额 ¥" value="10000">
+          <input type="date" id="finGoalDate" value="2026-12-31">
         </div>
         <div class="fin-goal-inputs" style="margin-top:8px;">
-          <input type="number" id="finGoalSaved" placeholder="已存金额 ¥" value="0" oninput="updateFinGoalLive()">
-          <button class="savings-calc-btn" onclick="saveFinGoal()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--pink);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">保存并AI分析</button>
+          <input type="number" id="finGoalSaved" placeholder="已存金额 ¥" value="0">
+          <button class="savings-calc-btn" onclick="calcFinGoal()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--pink);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">计算分析</button>
         </div>
+        <div style="font-size:11px;color:var(--text3);margin:6px 0;">💡 已存金额默认=总收入-总支出，可手动修改</div>
         <div id="finGoalResult"></div>
       </div>
     </div>
@@ -1638,25 +1639,13 @@ function getFinCatLabel(val){
 }
 
 function calcFinGoal(){
-  saveFinGoal();
-}
-
-function saveFinGoal(){
   var goal=parseFloat(document.getElementById('finGoalAmount').value);
   var dateStr=document.getElementById('finGoalDate').value;
   var saved=parseFloat(document.getElementById('finGoalSaved').value)||0;
   if(!goal||goal<=0){alert('请输入有效目标金额');return;}
   if(!dateStr){alert('请选择截止日期');return;}
   localStorage.setItem('jx_fin_goal',JSON.stringify({amount:goal,date:dateStr,saved:saved}));
-  renderFinGoal();
-}
-
-function updateFinGoalLive(){
-  var goal=parseFloat(document.getElementById('finGoalAmount').value)||0;
-  var dateStr=document.getElementById('finGoalDate').value||'2026-12-31';
-  var saved=parseFloat(document.getElementById('finGoalSaved').value)||0;
-  localStorage.setItem('jx_fin_goal',JSON.stringify({amount:goal,date:dateStr,saved:saved}));
-  renderFinGoal();
+  renderFinGoalResult(goal,dateStr,saved);
 }
 
 function renderFinGoal(){
@@ -1665,23 +1654,28 @@ function renderFinGoal(){
   var goalInput=document.getElementById('finGoalAmount');
   var dateInput=document.getElementById('finGoalDate');
   var savedInput=document.getElementById('finGoalSaved');
+  
   if(savedGoal.amount){goalInput.value=savedGoal.amount;}
   if(savedGoal.date){dateInput.value=savedGoal.date;}
   
   var records=loadFinRecords();
   var totalIncome=records.filter(function(r){return r.type==='income';}).reduce(function(s,r){return s+r.amount;},0);
   var totalExpense=records.filter(function(r){return r.type==='expense';}).reduce(function(s,r){return s+r.amount;},0);
-  var autoSaved=totalIncome-totalExpense;
+  var autoSaved=Math.round((totalIncome-totalExpense)*100)/100;
   
-  if(savedGoal.saved!==undefined){
-    savedInput.value=savedGoal.saved;
-  }else{
-    savedInput.value=autoSaved>0?autoSaved:0;
-  }
+  savedInput.value=autoSaved;
   
   var goal=parseFloat(goalInput.value)||10000;
   var dateStr=dateInput.value||'2026-12-31';
-  var saved=parseFloat(savedInput.value)||0;
+  var saved=autoSaved;
+  
+  renderFinGoalResult(goal,dateStr,saved,records);
+}
+
+function renderFinGoalResult(goal,dateStr,saved,records){
+  if(!records)records=loadFinRecords();
+  saved=parseFloat(saved)||0;
+  goal=parseFloat(goal)||10000;
   
   var now=new Date();now.setHours(0,0,0,0);
   var target=new Date(dateStr);target.setHours(0,0,0,0);
@@ -1698,16 +1692,14 @@ function renderFinGoal(){
   var dailyAvgExpense=Math.round(monthlyExpense/Math.max(1,new Date().getDate()));
   
   var advice='';
-  if(dailyBudget>0){
-    if(dailyAvgExpense>0&&dailyAvgExpense>dailyBudget*0.8){
-      advice='<strong>⚠️ 注意：</strong>当前日均支出 ¥'+dailyAvgExpense+'，接近或超过每日预算 ¥'+dailyBudget+'。建议控制非必要开支，优先保证每日存 ¥'+dailyBudget+'。';
-    }else if(saved>0&&percent>=50){
-      advice='<strong>🎉 进度良好！</strong>已完成 '+percent+'%，继续保持当前节奏，预计可在 '+dateStr+' 前达成目标。建议设置自动转账，每月固定存入。';
-    }else{
-      advice='<strong>📊 AI建议：</strong>每日需存 ¥'+dailyBudget+'，当前日均支出 ¥'+dailyAvgExpense+'。建议：1)减少外卖和冲动消费 2)设置每日存钱提醒 3)副业收入直接存入储蓄账户。';
-    }
-  }else{
+  if(remaining<=0){
     advice='<strong>🎉 目标已达成！</strong>恭喜你完成了存钱目标，可以考虑设置新的更高目标。';
+  }else if(dailyAvgExpense>0&&dailyAvgExpense>dailyBudget*0.8){
+    advice='<strong>⚠️ 注意：</strong>当前日均支出 ¥'+dailyAvgExpense+'，接近或超过每日预算 ¥'+dailyBudget+'。建议控制非必要开支，优先保证每日存 ¥'+dailyBudget+'。';
+  }else if(saved>0&&percent>=50){
+    advice='<strong>🎉 进度良好！</strong>已完成 '+percent+'%，继续保持当前节奏，预计可在 '+dateStr+' 前达成目标。建议设置自动转账，每月固定存入。';
+  }else{
+    advice='<strong>📊 AI建议：</strong>每日需存 ¥'+dailyBudget+'，当前日均支出 ¥'+dailyAvgExpense+'。建议：1)减少外卖和冲动消费 2)设置每日存钱提醒 3)副业收入直接存入储蓄账户。';
   }
   
   document.getElementById('finGoalResult').innerHTML=
