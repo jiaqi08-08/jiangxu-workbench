@@ -763,7 +763,10 @@ document.querySelectorAll('.nav-item').forEach(function(i){
       i.classList.add('active');
       document.querySelectorAll('.section').forEach(function(x){x.classList.remove('active');});
       var sec=document.getElementById('sec-'+s);
-      if(sec)sec.classList.add('active');
+      if(sec){
+        sec.classList.add('active');
+        localStorage.setItem('jx_current_section',s);
+      }
       closeSidebar();
     }
     if(jump){
@@ -1971,6 +1974,21 @@ renderNews();
 renderFinance();
 renderMenstrual();
 renderDouyin();
+
+// 恢复上次查看的页面
+(function(){
+  var savedSec=localStorage.getItem('jx_current_section');
+  if(savedSec&&savedSec!=='plan'){
+    var sec=document.getElementById('sec-'+savedSec);
+    if(sec){
+      document.querySelectorAll('.section').forEach(function(x){x.classList.remove('active');});
+      document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+      sec.classList.add('active');
+      var nav=document.querySelector('.nav-item[data-s="'+savedSec+'"]');
+      if(nav)nav.classList.add('active');
+    }
+  }
+})();
 
 // Refresh time-active states every minute
 setInterval(function(){renderTasks();},60000);
